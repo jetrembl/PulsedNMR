@@ -1,0 +1,2 @@
+# PulsedNMR
+This is the code written by J. Trembley to parse and understand data collected from the University at Buffalo's PHY408 Advanced Labratory Course Pulsed NMR Lab. It is a command line program meant to return csv for chart making and to calculate particular values from the data collected, specifically T_1, Spin Lattice Relaxation Times, and T2, Spin Spin Relaxation Times for multiple samples.
