@@ -6,8 +6,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Scanner;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
@@ -16,7 +18,7 @@ import org.apache.commons.io.filefilter.SuffixFileFilter;
 
 public class ParseCSV {
 
-	public enum Commands{max, help, t2_method1}
+	public enum Commands{max, help, t2_method1, t2_method2}
 	private String _startingDirectory;
 	private FileReader _in;
 	private FileWriter _out;
@@ -27,16 +29,23 @@ public class ParseCSV {
 		
 		switch (command) {
 		
+		case t2_method2:
+			println("Beginning to parse: \n\t'" + _startingDirectory + "'\n"
+					+ "to determine the spin-spin decay curve contained therein and"
+					+ "exporting the curve to output.csv in the same directory");
+			t2_method2();
+			break;
+		
 		case t2_method1:
 			println("Beginning to parse: \n\t'" + _startingDirectory + "'\n"
 					+ "recursivly for csv files and writing the max values of the\n"
-					+ "spin-spin relaxation echos to " + _startingDirectory + ".csv in the same directory\n");
+					+ "spin-spin relaxation echos to output.csv in the same directory\n");
 			t2_method1();
 			break;
 			
 		case max:
 			println("Beginning to parse: \n\t'" + _startingDirectory + "'\n"
-					+ "recursivly for csv files and writing the max values to " + _startingDirectory + ".csv in the same directory\n");
+					+ "recursivly for csv files and writing the max values to output.csv in the same directory\n");
 			max();
 			break;
 			
@@ -277,6 +286,157 @@ public class ParseCSV {
 				e.printStackTrace();
 			}
 		}
+	}
+	
+	private void t2_method2(){
+		File dir = new File(_startingDirectory);
+		LinkedList<File> files = (LinkedList<File>) FileUtils.listFiles(dir, new SuffixFileFilter(".CSV"), DirectoryFileFilter.DIRECTORY);
+		String outpath = _startingDirectory + "\\output.csv";
+		try{
+			_out = new FileWriter(outpath);
+			
+			for(int i = 0; i < files.size(); i++){
+				println(files.get(i).getPath());
+				parseFile_t2_method2(files.get(i).getAbsolutePath());
+			}
+			
+		} catch (IOException e) {
+			println("File at " + outpath + "Could not be written to: IOException");
+		}finally{
+			try {
+				_out.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private void parseFile_t2_method2(String path){
+		try {
+			_in = new FileReader(path);
+			int c;
+			int commaCount = 0;
+			int lineCount = 0;
+			String data_y = "";
+			String data_x = "";
+			String scale_y = "";
+			String scale_x = "";
+			String offset = "";
+			ArrayList<String> dataList_y = new ArrayList<String>();
+			ArrayList<String> dataList_x = new ArrayList<String>();
+			
+			while((c = _in.read()) != -1){
+				char cur = (char) c;
+				
+				switch (cur){
+				case ',':
+					commaCount += 1;
+					break;
+
+				case '\n':
+					lineCount += 1;
+					dataList_y.add(data_y);
+					dataList_x.add(data_x);
+					data_y = "";
+					data_x = "";
+					commaCount = 0;
+					break;
+				
+				case ' ':
+					break;
+					
+				default:
+					if(commaCount ==3){
+						data_x = data_x + cur;
+					}
+					if(commaCount == 4){
+						data_y = data_y + cur; 
+					}
+					if(commaCount == 1){
+						if(lineCount == 8){
+							scale_y = scale_y + cur;
+						}if(lineCount == 9){
+							offset = offset + cur;
+						}if(lineCount ==11){
+							scale_x = scale_x + cur;
+						}
+					}
+					break;
+				}
+			}
+			double scale_yd = Double.valueOf(scale_y);
+			double scale_xd = Double.valueOf(scale_x);
+			double offset_d = Double.valueOf(offset); /* not yet used because not yet understood */
+			
+			ArrayList<Double> dataList_yd = new ArrayList<Double>();
+			ArrayList<Double> dataList_xd = new ArrayList<Double>();
+			
+			for (int i = 0; i < dataList_y.size(); i++){
+				dataList_yd.add(Double.valueOf(dataList_y.get(i)) * scale_yd);
+				dataList_xd.add(Double.valueOf(dataList_x.get(i)) * scale_xd);
+			}
+			
+			curve_t2_method2(dataList_yd, dataList_xd);
+		} catch (FileNotFoundException e) {
+			println("File at " + path + "Could not be parsed: FileNotFoundException");
+		} catch (IOException e) {
+			println("File at " + path + "Could not be parsed: IOException");
+		}finally{
+			try {
+				_in.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	private void curve_t2_method2(ArrayList<Double> list_y, ArrayList<Double> list_x){
+		double threshold = .35; /* threshold below which values are considered zero. Aids in the reset of finding the local max */
+		double curMax = 0;
+		int indexOfMax = 0;
+		double comp = 0;
+		int count = 0;
+		int state = 0; /* 0 = above threshold, 1 = below threshold*/
+		for(int i = 0; i< list_y.size(); i++){
+			if(state == 0 && (comp = list_y.get(i)) > threshold){
+				if (curMax < comp){
+					curMax = comp;
+					indexOfMax = i;
+				}
+			}else if(state == 0 && (comp = list_y.get(i)) < threshold){
+				state = 1;
+				if (curMax < comp){
+					curMax = comp;
+					indexOfMax = i;
+				}
+				
+			}else if(state == 1 && (comp = list_y.get(i)) > threshold){
+				state = 0;
+				if (curMax < comp){
+					curMax = comp;
+					indexOfMax = i;
+				}
+				try {
+					_out.write(Double.toString(list_x.get(indexOfMax)) + "," + Double.toString(list_y.get(indexOfMax)) + "\n");
+					println(Double.toString(list_x.get(indexOfMax)) + "," + Double.toString(list_y.get(indexOfMax)) + "\n");
+					curMax = 0;
+					comp = 0;
+					count += 1;
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			} else {
+				if (curMax < comp){
+					curMax = comp;
+					indexOfMax = i;
+				}
+			}
+		}
+		println("This operation produced " + count + " data points in output.csv");
 	}
 	
 	
