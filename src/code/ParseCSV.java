@@ -22,6 +22,7 @@ public class ParseCSV {
 	private String _startingDirectory;
 	private FileReader _in;
 	private FileWriter _out;
+	private ArrayList<Double> t1data = new ArrayList<Double>();
 	
 	public ParseCSV(String startingDirectory, Commands command) {
 		
@@ -88,6 +89,19 @@ public class ParseCSV {
 				parseFileMax(files.get(i).getAbsolutePath());
 			}
 			
+			int index = min(t1data);
+			for(int x = 0; x < index; x++){
+				t1data.set(x, (((double) -1) * t1data.get(x)));
+			}
+			
+			for(int i = 0; i < t1data.size(); i++){
+				String val = Double.toString(t1data.get(i));
+				_out.write("," + val + "\n");
+				println("Max data value, scaled is: " + val);
+			}
+			
+			println("index of min is: " + index + ", and the value at the index is: " + t1data.get(index));
+			
 		} catch (IOException e) {
 			println("File at " + path + "Could not be written to: IOException");
 		}finally{
@@ -99,6 +113,22 @@ public class ParseCSV {
 			}
 		}
 		
+	}
+	
+	private int min(ArrayList<Double> list){
+		double min = 100;
+		double lastMin = 100;
+		int index = 0;
+		for(int i = 0; i < list.size(); i++){
+			lastMin = min;
+			min = Math.min(min, list.get(i));
+			if(lastMin != min){
+				index = i;
+			}else if(min == list.get(i)){
+				index = i;
+			}
+		}
+		return index;
 	}
 
 	private void parseFileMax(String absolutePath) {
@@ -153,13 +183,10 @@ public class ParseCSV {
 				dataList_d.add(Double.valueOf(dataList.get(i)) * scale_d);
 			}
 			
-			String max = max((double) 0, dataList_d);
+			double max_d = max_double((double) 0, dataList_d); 
+			t1data.add(max_d);
 			
-			println("Max data value, scaled is: " + max);
 			
-			_out.write("," + max + "\n");
-			
-			_out.flush();
 		} catch (FileNotFoundException e) {
 			println("File at " + absolutePath + "Could not be parsed: FileNotFoundException");
 		} catch (IOException e) {
@@ -186,6 +213,14 @@ public class ParseCSV {
 			return Double.toString(Math.max(x, dataList_d.get(0)));
 		}else{
 			return max (Math.max(x, dataList_d.get(0)), dataList_d.subList(1, dataList_d.size()));
+		}
+	}
+	
+	private double max_double(double x, List<Double> dataList_d){
+		if (dataList_d.size() <= 1){
+			return Math.max(x, dataList_d.get(0));
+		}else{
+			return max_double (Math.max(x, dataList_d.get(0)), dataList_d.subList(1, dataList_d.size()));
 		}
 	}
 
