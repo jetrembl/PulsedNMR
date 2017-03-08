@@ -349,6 +349,9 @@ public class ParseCSV {
 	
 	private void parseFile_t2_method2(String path){
 		try {
+			Scanner ui = new Scanner(System.in);
+			println("Please enter the delay time for this file (in sec).");
+			double delaytime = ui.nextDouble();
 			_in = new FileReader(path);
 			int c;
 			int commaCount = 0;
@@ -412,11 +415,14 @@ public class ParseCSV {
 				dataList_xd.add(Double.valueOf(dataList_x.get(i)) * scale_xd);
 			}
 			
-			curve_t2_method2(dataList_yd, dataList_xd);
+			curve_t2_method2(dataList_yd, dataList_xd, delaytime);
 		} catch (FileNotFoundException e) {
 			println("File at " + path + "Could not be parsed: FileNotFoundException");
 		} catch (IOException e) {
 			println("File at " + path + "Could not be parsed: IOException");
+		}catch (InputMismatchException e){
+			println("You did not input a propper delay time.\n\n Exiting...");
+			System.exit(0);
 		}finally{
 			try {
 				_in.close();
@@ -428,8 +434,8 @@ public class ParseCSV {
 		
 	}
 	
-	private void curve_t2_method2(ArrayList<Double> list_y, ArrayList<Double> list_x){
-		double threshold = .35; /* threshold below which values are considered zero. Aids in the reset of finding the local max */
+	private void curve_t2_method2(ArrayList<Double> list_y, ArrayList<Double> list_x, double delaytime){
+		double threshold = .15; /* threshold below which values are considered zero. Aids in the reset of finding the local max */
 		double curMax = 0;
 		int indexOfMax = 0;
 		double comp = 0;
@@ -455,8 +461,8 @@ public class ParseCSV {
 					indexOfMax = i;
 				}
 				try {
-					_out.write(Double.toString(list_x.get(indexOfMax)) + "," + Double.toString(list_y.get(indexOfMax)) + "\n");
-					println(Double.toString(list_x.get(indexOfMax)) + "," + Double.toString(list_y.get(indexOfMax)) + "\n");
+					_out.write(Double.toString((delaytime) * count) + "," + Double.toString(list_y.get(indexOfMax)) + "\n");
+					println(Double.toString((delaytime) * count) + "," + Double.toString(list_y.get(indexOfMax)) + "\n");
 					curMax = 0;
 					comp = 0;
 					count += 1;
